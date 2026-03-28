@@ -7,7 +7,9 @@ const ENDPOINTS = [
   { method: 'POST' as const, path: '/api/rules-applicable' },
   { method: 'POST' as const, path: '/api/send-sms' },
   { method: 'POST' as const, path: '/api/escalate-human' },
-  { method: 'POST' as const, path: '/api/log-call' }
+  { method: 'POST' as const, path: '/api/log-call' },
+  { method: 'POST' as const, path: '/api/escalation-webhook-demo' },
+  { method: 'GET' as const, path: '/api/escalation-webhook-demo' }
 ];
 
 const REQUIRED_ENV = [
@@ -25,7 +27,10 @@ const OPTIONAL_ENV = [
   { name: 'TWILIO_ACCOUNT_SID', note: 'For POST /api/send-sms' },
   { name: 'TWILIO_AUTH_TOKEN', note: '' },
   { name: 'TWILIO_FROM_NUMBER', note: '' },
-  { name: 'ESCALATION_WEBHOOK_URL', note: 'For POST /api/escalate-human' },
+  {
+    name: 'ESCALATION_WEBHOOK_URL',
+    note: 'For POST /api/escalate-human — demo: https://plumbing-tools-api.vercel.app/api/escalation-webhook-demo'
+  },
   { name: 'ESCALATION_WEBHOOK_SECRET', note: 'Optional webhook header' },
   { name: 'ESCALATION_TRANSFER_NUMBER', note: 'Optional PSTN hint' }
 ];

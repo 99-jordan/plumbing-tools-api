@@ -222,6 +222,19 @@ Body example:
 
 Response includes `webhookDelivered`, `webhookStatus` (when a webhook URL is set), and `transferNumber`.
 
+### Demo escalation webhook (same deployment)
+
+Point **`ESCALATION_WEBHOOK_URL`** at this URL to log payloads into a new **`Escalations`** sheet tab (created automatically):
+
+```text
+ESCALATION_WEBHOOK_URL=https://plumbing-tools-api.vercel.app/api/escalation-webhook-demo
+```
+
+(Use your real Vercel hostname if different.)
+
+- **`POST /api/escalation-webhook-demo`** — JSON body: `companyId`, `callId` (required); `name`, `callerPhone`, `postcode`, `address`, `issueSummary`, `priority`, `reason` (optional strings, default empty). Compatible with the JSON sent by `postEscalationWebhook` (`timestamp` allowed, ignored for the row; `receivedAt` is set server-side). If **`ESCALATION_WEBHOOK_SECRET`** is set, requests must include header **`x-escalation-secret`** with the same value (same as real `escalate-human` → webhook).
+- **`GET /api/escalation-webhook-demo`** — Returns `{ ok, count, escalations }` with the newest rows first (up to 50). Unauthenticated for quick visual checks (keep URL obscure in production or remove later).
+
 ### `POST /api/log-call`
 
 Appends a row into the `CallLogs` sheet.
