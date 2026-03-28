@@ -5,9 +5,12 @@
 import 'dotenv/config';
 
 const base = process.env.SMOKE_BASE_URL || `http://127.0.0.1:${process.env.PORT || 3000}`;
-const secret = process.env.X_ELEVENLABS_SECRET;
+const secret =
+  process.env.X_ELEVENLABS_SECRET_PLUMBINGPRO ?? process.env.X_ELEVENLABS_SECRET;
 if (!secret) {
-  console.error('Missing X_ELEVENLABS_SECRET (load .env or export it)');
+  console.error(
+    'Missing X_ELEVENLABS_SECRET_PLUMBINGPRO or X_ELEVENLABS_SECRET (load .env or export it)'
+  );
   process.exit(1);
 }
 

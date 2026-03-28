@@ -37,7 +37,7 @@ Copy `.env.example` to `.env` and fill in the values (or define the same keys in
 **Core (required)**
 
 - `PORT` — optional on Vercel (platform sets it); used for local `dev:express`
-- `X_ELEVENLABS_SECRET`
+- `X_ELEVENLABS_SECRET_PLUMBINGPRO` (preferred) or legacy `X_ELEVENLABS_SECRET`
 - `GOOGLE_SHEET_ID`
 - `GOOGLE_SERVICE_ACCOUNT_EMAIL`
 - `GOOGLE_PRIVATE_KEY`
@@ -71,7 +71,7 @@ npm run dev:express
 2. Framework preset: **Next.js** (default). Build: `next build`, output: Next default.
 3. In **Project → Settings → Environment Variables**, add every key from [Required environment variables](#required-environment-variables) (and any optional keys you use). Use **Production** (and Preview if you want preview deployments to work against a test sheet).
 4. For `GOOGLE_PRIVATE_KEY`, paste the full PEM and replace real newlines with `\n` in the Vercel value field (same as local `.env`).
-5. Deploy, then set your ElevenLabs tool URLs to `https://<your-project>.vercel.app/api/...` with header `x-elevenlabs-secret`.
+5. Deploy, then set your ElevenLabs tool URLs to `https://<your-project>.vercel.app/api/...` with header `x-elevenlabs-secret` (same string as `X_ELEVENLABS_SECRET_PLUMBINGPRO` / legacy `X_ELEVENLABS_SECRET` in Vercel).
 
 Secrets should live in Vercel (or your secret manager), not in the repo. `.env` is gitignored; use `.env.example` as the checklist.
 

@@ -11,7 +11,10 @@ const ENDPOINTS = [
 ];
 
 const REQUIRED_ENV = [
-  { name: 'X_ELEVENLABS_SECRET', note: 'Shared secret; send as header x-elevenlabs-secret' },
+  {
+    name: 'X_ELEVENLABS_SECRET_PLUMBINGPRO',
+    note: 'Shared secret (or legacy X_ELEVENLABS_SECRET); header x-elevenlabs-secret unchanged'
+  },
   { name: 'GOOGLE_SHEET_ID', note: 'Spreadsheet ID' },
   { name: 'GOOGLE_SERVICE_ACCOUNT_EMAIL', note: 'Service account client email' },
   { name: 'GOOGLE_PRIVATE_KEY', note: 'PEM private key; use \\n for newlines in Vercel' }

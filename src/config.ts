@@ -16,9 +16,20 @@ function optional(name: string): string | undefined {
   return value;
 }
 
+function requiredElevenLabsSecret(): string {
+  const value =
+    process.env.X_ELEVENLABS_SECRET_PLUMBINGPRO ?? process.env.X_ELEVENLABS_SECRET;
+  if (!value) {
+    throw new Error(
+      'Missing environment variable: X_ELEVENLABS_SECRET_PLUMBINGPRO (or legacy X_ELEVENLABS_SECRET)'
+    );
+  }
+  return value;
+}
+
 export const config = {
   port: Number(process.env.PORT || 3000),
-  elevenSecret: required('X_ELEVENLABS_SECRET'),
+  elevenSecret: requiredElevenLabsSecret(),
   googleSheetId: required('GOOGLE_SHEET_ID'),
   googleServiceAccountEmail: required('GOOGLE_SERVICE_ACCOUNT_EMAIL'),
   googlePrivateKey: required('GOOGLE_PRIVATE_KEY').replace(/\\n/g, '\n'),
