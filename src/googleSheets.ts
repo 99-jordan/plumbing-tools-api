@@ -117,9 +117,20 @@ export async function ensureEscalationsSheet(): Promise<void> {
 
   const first = await readTab(ESCALATIONS_TAB);
   const r0 = first[0] ?? [];
+  const a1 = String(r0[0] ?? '').trim();
+  if (a1 === 'receivedAt') {
+    return;
+  }
+
   const row1AllBlank =
     first.length === 0 || r0.every((c) => String(c ?? '').trim() === '');
-  if (row1AllBlank) {
+  const noDataRows =
+    first.length <= 1 ||
+    first.slice(1).every((row) =>
+      (row ?? []).every((c) => String(c ?? '').trim() === '')
+    );
+
+  if (row1AllBlank || noDataRows) {
     await sheets.spreadsheets.values.update({
       spreadsheetId: config.googleSheetId,
       range: `${ESCALATIONS_TAB}!A1:J1`,
@@ -128,11 +139,11 @@ export async function ensureEscalationsSheet(): Promise<void> {
     });
     return;
   }
-  if (String(r0[0] ?? '').trim() !== 'receivedAt') {
-    throw new Error(
-      'Escalations tab exists but row 1 is not the expected header (first column must be "receivedAt"). Delete the tab or clear row 1 so the API can write headers.'
-    );
-  }
+
+  throw new Error(
+    'Escalations row 1 must have "receivedAt" in column A, or there must be no non-empty rows below row 1. ' +
+      'Fix row 1 / delete stray data rows, or remove non-empty cells in row 1 (e.g. labels in B1–J1).'
+  );
 }
 
 export async function appendEscalationDemoRow(row: string[]): Promise<void> {
