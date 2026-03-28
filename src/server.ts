@@ -29,7 +29,7 @@ const rootLines = [
   'POST /api/escalate-human',
   'POST /api/log-call',
   '',
-  'All /api/* routes require the x-elevenlabs-secret header.'
+  'All /api/* routes require the x-elevenlabs-secret-plumbingpro header.'
 ];
 
 app.get('/', (_req, res) => {

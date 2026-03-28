@@ -13,7 +13,7 @@ const ENDPOINTS = [
 const REQUIRED_ENV = [
   {
     name: 'X_ELEVENLABS_SECRET_PLUMBINGPRO',
-    note: 'Shared secret (or legacy X_ELEVENLABS_SECRET); header x-elevenlabs-secret unchanged'
+    note: 'Must match tool header x-elevenlabs-secret-plumbingpro (legacy env X_ELEVENLABS_SECRET still works)'
   },
   { name: 'GOOGLE_SHEET_ID', note: 'Spreadsheet ID' },
   { name: 'GOOGLE_SERVICE_ACCOUNT_EMAIL', note: 'Service account client email' },
@@ -46,7 +46,7 @@ export default function HomePage() {
         <HealthStatus />
         <p className="note">
           <code>/api/health</code> is public. All other <code>/api/*</code> routes require{' '}
-          <code>x-elevenlabs-secret</code>.
+          <code>x-elevenlabs-secret-plumbingpro</code>.
         </p>
       </section>
 
@@ -95,7 +95,7 @@ export default function HomePage() {
         <p className="note" style={{ marginTop: 0 }}>
           Use your deployment URL as the tool base, e.g.{' '}
           <code>https://&lt;project&gt;.vercel.app/api/rules-applicable</code>. Set the same secret in Vercel
-          and in the ElevenLabs tool header <code>x-elevenlabs-secret</code>.
+          and in the ElevenLabs tool header <code>x-elevenlabs-secret-plumbingpro</code>.
         </p>
       </section>
 

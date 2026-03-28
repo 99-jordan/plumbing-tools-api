@@ -4,6 +4,9 @@
  */
 import 'dotenv/config';
 
+/** Keep in sync with src/elevenlabs-plumbing-header.ts */
+const SECRET_HEADER = 'x-elevenlabs-secret-plumbingpro';
+
 const base = process.env.SMOKE_BASE_URL || `http://127.0.0.1:${process.env.PORT || 3000}`;
 const secret =
   process.env.X_ELEVENLABS_SECRET_PLUMBINGPRO ?? process.env.X_ELEVENLABS_SECRET;
@@ -15,11 +18,11 @@ if (!secret) {
 }
 
 const jsonHeaders = {
-  'x-elevenlabs-secret': secret,
+  [SECRET_HEADER]: secret,
   'Content-Type': 'application/json'
 };
 
-const getHeaders = { 'x-elevenlabs-secret': secret };
+const getHeaders = { [SECRET_HEADER]: secret };
 
 async function assertOk(res, label) {
   const text = await res.text();

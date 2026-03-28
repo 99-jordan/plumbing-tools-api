@@ -71,7 +71,7 @@ npm run dev:express
 2. Framework preset: **Next.js** (default). Build: `next build`, output: Next default.
 3. In **Project → Settings → Environment Variables**, add every key from [Required environment variables](#required-environment-variables) (and any optional keys you use). Use **Production** (and Preview if you want preview deployments to work against a test sheet).
 4. For `GOOGLE_PRIVATE_KEY`, paste the full PEM and replace real newlines with `\n` in the Vercel value field (same as local `.env`).
-5. Deploy, then set your ElevenLabs tool URLs to `https://<your-project>.vercel.app/api/...` with header `x-elevenlabs-secret` (same string as `X_ELEVENLABS_SECRET_PLUMBINGPRO` / legacy `X_ELEVENLABS_SECRET` in Vercel).
+5. Deploy, then set your ElevenLabs tool URLs to `https://<your-project>.vercel.app/api/...` with header **`x-elevenlabs-secret-plumbingpro`** (same string as `X_ELEVENLABS_SECRET_PLUMBINGPRO` / legacy `X_ELEVENLABS_SECRET` in Vercel). Use a **literal** `https://…vercel.app/...` URL unless ElevenLabs explicitly supports variable interpolation in that field.
 
 Secrets should live in Vercel (or your secret manager), not in the repo. `.env` is gitignored; use `.env.example` as the checklist.
 
@@ -84,6 +84,16 @@ npm run smoke
 ```
 
 Optional: `SMOKE_BASE_URL`, `SMOKE_COMPANY_ID`, `SMOKE_SKIP_LOG_CALL=1`, `SMOKE_SKIP_SEND_SMS=1`, `SMOKE_SMS_TO`, `SMOKE_SMS_TEMPLATE_ID`.
+
+## Verify ElevenLabs vs this API
+
+1. **Tool creation vs runtime** — ElevenLabs usually **does not** call your server when you save a tool. If tools save but the agent fails, debug **runtime** (URL, headers, secret, sheet access), not “tool creation.”
+2. **URL env / variable syntax** — If the tool URL field **does not** substitute secrets or env vars, you may get a bad host or 404. Use a **literal** `https://<project>.vercel.app/api/...` until you confirm their interpolation rules.
+3. **Literal Vercel URL** — From a terminal:  
+   `curl -sS -i -H "x-elevenlabs-secret-plumbingpro: <SECRET>" "https://<project>.vercel.app/api/company-context?companyId=rapidflow_london"`  
+   Expect **200** + JSON if Google credentials and sheet access are correct; **401** if the header or secret is wrong.
+4. **What the backend checks** — Header **`x-elevenlabs-secret-plumbingpro`** must equal **`X_ELEVENLABS_SECRET_PLUMBINGPRO`** (or legacy **`X_ELEVENLABS_SECRET`**).
+5. **401 response** — Wrong/missing header or wrong secret → **401** with JSON: `error`, `reason: "missing_or_invalid_secret_header"`, and `header` set to the expected header name.
 
 ## Endpoints
 
@@ -226,46 +236,46 @@ Create these server tools:
 ### 1. Company context
 - Method: `GET`
 - URL: `https://your-domain.com/api/company-context?companyId=rapidflow_london`
-- Header: `x-elevenlabs-secret: {{YOUR_SECRET}}`
+- Header: `x-elevenlabs-secret-plumbingpro: {{YOUR_SECRET}}`
 - Use: approved facts only
 
 ### 2. Service search
 - Method: `GET`
 - URL: `https://your-domain.com/api/services-search?companyId=rapidflow_london&query={{issue_summary}}`
-- Header: `x-elevenlabs-secret: {{YOUR_SECRET}}`
+- Header: `x-elevenlabs-secret-plumbingpro: {{YOUR_SECRET}}`
 - Use: likely service matching
 
 ### 3. Rules applicable
 - Method: `POST`
 - URL: `https://your-domain.com/api/rules-applicable`
-- Header: `x-elevenlabs-secret: {{YOUR_SECRET}}`
+- Header: `x-elevenlabs-secret-plumbingpro: {{YOUR_SECRET}}`
 - Content type: JSON
 - Use: main emergency triage
 
 ### 4. Log call
 - Method: `POST`
 - URL: `https://your-domain.com/api/log-call`
-- Header: `x-elevenlabs-secret: {{YOUR_SECRET}}`
+- Header: `x-elevenlabs-secret-plumbingpro: {{YOUR_SECRET}}`
 - Content type: JSON
 - Use: end of call logging
 
 ### 5. Intake flow
 - Method: `GET`
 - URL: `https://your-domain.com/api/intake-flow?companyId=rapidflow_london`
-- Header: `x-elevenlabs-secret: {{YOUR_SECRET}}`
+- Header: `x-elevenlabs-secret-plumbingpro: {{YOUR_SECRET}}`
 - Use: structured questions from the sheet
 
 ### 6. Send SMS
 - Method: `POST`
 - URL: `https://your-domain.com/api/send-sms`
-- Header: `x-elevenlabs-secret: {{YOUR_SECRET}}`
+- Header: `x-elevenlabs-secret-plumbingpro: {{YOUR_SECRET}}`
 - Content type: JSON
 - Use: send the approved template after triage
 
 ### 7. Escalate human
 - Method: `POST`
 - URL: `https://your-domain.com/api/escalate-human`
-- Header: `x-elevenlabs-secret: {{YOUR_SECRET}}`
+- Header: `x-elevenlabs-secret-plumbingpro: {{YOUR_SECRET}}`
 - Content type: JSON
 - Use: webhook + optional transfer number for genuine emergencies
 
@@ -292,7 +302,7 @@ Your current HostAssist pattern is:
 - one focused endpoint per business memory bucket
 - one endpoint for rules
 - one endpoint for call logging
-- all protected by `x-elevenlabs-secret`
+- all protected by `x-elevenlabs-secret-plumbingpro`
 
 This plumbing version keeps the same shape, but swaps restaurant context and menu logic for:
 
