@@ -95,6 +95,23 @@ Optional: `SMOKE_BASE_URL`, `SMOKE_COMPANY_ID`, `SMOKE_SKIP_LOG_CALL=1`, `SMOKE_
 4. **What the backend checks** — Header **`x-elevenlabs-secret-plumbingpro`** must equal **`X_ELEVENLABS_SECRET_PLUMBINGPRO`** (or legacy **`X_ELEVENLABS_SECRET`**).
 5. **401 response** — Wrong/missing header or wrong secret → **401** with JSON: `error`, `reason: "missing_or_invalid_secret_header"`, and `header` set to the expected header name.
 
+### Temporary auth debugging
+
+Set **`DEBUG_PLUMBING_AUTH=1`** (Vercel env + redeploy). Then:
+
+- Failed auth responses include a **`debug`** object: `hasHeader`, `hasEnv`, `headerLength`, `envLength`, `matches`, `expectedEnvKey`, `looksLikeUnresolvedPlaceholder` (true if the header still contains `{{secret:…}}` — ElevenLabs did not substitute the secret).
+- Function logs include a JSON line `[plumbing-auth:next] …` (no secret values).
+- **`GET /api/debug/auth-plumbing`** returns the same diagnostic shape for the incoming request (404 when the flag is off).
+
+Remove the flag when finished.
+
+**Manual check with real secret** (replace `YOUR_SECRET`):
+
+```bash
+curl -i "https://plumbing-tools-api.vercel.app/api/company-context?companyId=rapidflow_london" \
+  -H "x-elevenlabs-secret-plumbingpro: YOUR_SECRET"
+```
+
 ## Endpoints
 
 ### `GET /api/company-context`
