@@ -7,6 +7,20 @@ import {
   readEscalationsRecent
 } from '../../../googleSheets.js';
 
+function formatSheetsFailure(err: unknown): string {
+  if (err && typeof err === 'object' && 'response' in err) {
+    const data = (err as { response?: { data?: unknown } }).response?.data;
+    if (data !== undefined) {
+      try {
+        return JSON.stringify(data);
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+  return err instanceof Error ? err.message : String(err);
+}
+
 /** Matches demo manual posts and production `postEscalationWebhook` payloads (+ optional postcode/address). */
 const bodySchema = z.object({
   companyId: z.string().min(1),
@@ -70,7 +84,7 @@ export async function POST(req: NextRequest) {
       p.reason
     ]);
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unknown error';
+    const message = formatSheetsFailure(e);
     return NextResponse.json({ error: 'Sheets error', message }, { status: 500 });
   }
 
@@ -87,7 +101,7 @@ export async function GET() {
       escalations
     });
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unknown error';
+    const message = formatSheetsFailure(e);
     return NextResponse.json({ error: 'Failed to read Escalations', message }, { status: 500 });
   }
 }

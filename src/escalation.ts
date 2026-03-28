@@ -11,7 +11,12 @@ export type EscalationPayload = {
   timestamp: string;
 };
 
-export async function postEscalationWebhook(payload: EscalationPayload): Promise<{ ok: boolean; status?: number }> {
+export async function postEscalationWebhook(payload: EscalationPayload): Promise<{
+  ok: boolean;
+  status?: number;
+  /** First ~600 chars of response body when status is not ok (debug webhook failures). */
+  responsePreview?: string;
+}> {
   const url = config.escalationWebhookUrl;
   if (!url) {
     return { ok: false };
@@ -30,5 +35,11 @@ export async function postEscalationWebhook(payload: EscalationPayload): Promise
     body: JSON.stringify(payload)
   });
 
-  return { ok: res.ok, status: res.status };
+  let responsePreview: string | undefined;
+  if (!res.ok) {
+    const text = await res.text();
+    responsePreview = text.slice(0, 600);
+  }
+
+  return { ok: res.ok, status: res.status, responsePreview };
 }

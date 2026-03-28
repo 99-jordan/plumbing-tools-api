@@ -116,7 +116,10 @@ export async function ensureEscalationsSheet(): Promise<void> {
   }
 
   const first = await readTab(ESCALATIONS_TAB);
-  if (first.length === 0) {
+  const r0 = first[0] ?? [];
+  const row1AllBlank =
+    first.length === 0 || r0.every((c) => String(c ?? '').trim() === '');
+  if (row1AllBlank) {
     await sheets.spreadsheets.values.update({
       spreadsheetId: config.googleSheetId,
       range: `${ESCALATIONS_TAB}!A1:J1`,
@@ -125,9 +128,9 @@ export async function ensureEscalationsSheet(): Promise<void> {
     });
     return;
   }
-  if (String(first[0]?.[0] ?? '').trim() !== 'receivedAt') {
+  if (String(r0[0] ?? '').trim() !== 'receivedAt') {
     throw new Error(
-      'Escalations tab exists but row 1 is not the expected header (first column must be "receivedAt"). Fix or clear the tab.'
+      'Escalations tab exists but row 1 is not the expected header (first column must be "receivedAt"). Delete the tab or clear row 1 so the API can write headers.'
     );
   }
 }

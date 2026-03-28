@@ -220,7 +220,7 @@ Body example:
 }
 ```
 
-Response includes `webhookDelivered`, `webhookStatus` (when a webhook URL is set), and `transferNumber`.
+Response includes `webhookDelivered`, `webhookStatus` (when a webhook URL is set), `webhookResponsePreview` (first ~600 chars of the webhook response body when `webhookDelivered` is false — use this to debug 4xx/5xx from `ESCALATION_WEBHOOK_URL`), and `transferNumber`.
 
 ### Demo escalation webhook (same deployment)
 
@@ -234,6 +234,8 @@ ESCALATION_WEBHOOK_URL=https://plumbing-tools-api.vercel.app/api/escalation-webh
 
 - **`POST /api/escalation-webhook-demo`** — JSON body: `companyId`, `callId` (required); `name`, `callerPhone`, `postcode`, `address`, `issueSummary`, `priority`, `reason` (optional strings, default empty). Compatible with the JSON sent by `postEscalationWebhook` (`timestamp` allowed, ignored for the row; `receivedAt` is set server-side). If **`ESCALATION_WEBHOOK_SECRET`** is set, requests must include header **`x-escalation-secret`** with the same value (same as real `escalate-human` → webhook).
 - **`GET /api/escalation-webhook-demo`** — Returns `{ ok, count, escalations }` with the newest rows first (up to 50). Unauthenticated for quick visual checks (keep URL obscure in production or remove later).
+
+**If `escalate-human` shows `webhookStatus: 500` (not 404):** the demo URL was reached but failed inside the handler (usually Google Sheets). Check `webhookResponsePreview` on the same response for JSON `message` (e.g. wrong `Escalations` tab header — first column must be `receivedAt`, or delete an empty/manually broken tab so the API can recreate it). **`webhookStatus: 404`** means the URL path is wrong or the deployment has no such route.
 
 ### `POST /api/log-call`
 

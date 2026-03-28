@@ -88,6 +88,7 @@ export async function handleEscalateHuman(body: unknown) {
   const timestamp = new Date().toISOString();
   let webhookDelivered = false;
   let webhookStatus: number | undefined;
+  let webhookResponsePreview: string | undefined;
 
   if (hasWebhook) {
     const result = await postEscalationWebhook({
@@ -102,12 +103,14 @@ export async function handleEscalateHuman(body: unknown) {
     });
     webhookDelivered = result.ok;
     webhookStatus = result.status;
+    webhookResponsePreview = result.responsePreview;
   }
 
   return {
     ok: true,
     webhookDelivered,
     webhookStatus,
+    webhookResponsePreview,
     transferNumber
   };
 }
