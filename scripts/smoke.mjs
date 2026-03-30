@@ -111,9 +111,11 @@ const escRes = await fetch(`${base}/api/escalate-human`, {
     callId: `smoke_${Date.now()}`,
     reason: 'smoke_test',
     priority: 'P3',
-    callerPhone: '+440000000000',
+    phone: '+440000000000',
     issueSummary: 'Smoke test',
-    name: 'Smoke'
+    name: 'Smoke',
+    address: '1 Smoke Street, Testville',
+    postcode: 'TE1 1ST'
   })
 });
 if (escRes.status !== 200 && escRes.status !== 503) {

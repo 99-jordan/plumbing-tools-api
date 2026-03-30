@@ -30,6 +30,25 @@ Runtime flow:
 4. The agent uses the result to respond, send the right SMS, or escalate
 5. At the end of the call the agent calls `log-call`
 
+## Convention: POST tool routes (normalisation standard)
+
+**Default for all new `POST /api/*` routes** that are invoked as **agent tools** (ElevenLabs or similar): use the same pattern as `escalate-human`, `send-sms`, and `log-call`, **unless** there is a strong reason to skip it (document that reason next to the route).
+
+1. **`normalize…Input(raw: unknown)`** in `src/tool-payload-normalize.ts` — trim strings; treat empty strings as absent for optional fields where it helps callers; map legacy / alias field names; generate ids (e.g. `callId`) when omitted.
+2. **Canonical Zod schema** (e.g. in `src/logic.ts`) — validate **after** normalisation only.
+3. **`parseCanonical(schema, normalized)`** from `src/tool-validation.ts` — throws **`HttpValidationError`** → HTTP **400** with `{ "error": "Validation failed", "fields": { … } }` (handled in `src/lib/route-error.ts` and Express).
+4. **Handler** in `src/api-handlers.ts`; the App Router `route.ts` should stay thin (call handler + `jsonError`).
+
+**Exceptions today (intentional):**
+
+| Route | Why |
+|--------|-----|
+| `POST /api/rules-applicable` | Historical: validates raw body with Zod only; can be migrated to this pattern when touched. |
+| `POST /api/escalation-webhook-demo` | Outbound webhook target / demo sink, not an ElevenLabs tool body. |
+| `POST /api/debug/*` | Debugging only. |
+
+New POST tools should **not** be added to the exceptions list without a short rationale in code or README.
+
 ## Required environment variables
 
 Copy `.env.example` to `.env` and fill in the values (or define the same keys in Vercel for production).
@@ -114,6 +133,25 @@ curl -i "https://plumbing-tools-api.vercel.app/api/company-context?companyId=rap
 
 ## Endpoints
 
+### Agent-facing payloads (normalisation layer)
+
+The routes below follow the project **[POST tool route convention](#convention-post-tool-routes-normalisation-standard)**:
+
+- **`POST /api/escalate-human`**, **`POST /api/send-sms`**, **`POST /api/log-call`**
+
+Behaviour:
+
+- Trims all strings and treats **empty strings as missing** for optional fields (where each normaliser defines).
+- **Generates `callId`** if missing or blank: `call_<timestamp>_<random>` (on those routes).
+- Accepts **legacy field names** during transition (e.g. `callerPhone` or `phone`, `to` or `phone`, `templateId` or `messageType`).
+- Validates with **Zod after** normalisation. On failure, returns **`400`** with:
+
+```json
+{ "error": "Validation failed", "fields": { "address": "Required for emergency escalation" } }
+```
+
+**`GET`** tools are unchanged. **`POST /api/rules-applicable`** is not yet on the shared normaliser (see exceptions table above).
+
 ### `GET /api/company-context`
 
 Use when the agent needs approved company facts.
@@ -184,20 +222,43 @@ Query params:
 
 ### `POST /api/send-sms`
 
-Sends an SMS using Twilio after resolving the template from the `SMS` tab. Returns `503` if Twilio env vars are not set.
+Sends an SMS using Twilio. Returns `503` if Twilio env vars are not set.
 
-Body example:
+**Preferred agent fields:** `companyId`, `callId` (optional — auto-generated if blank), `phone`, `messageType`, `name`, `bookingLink`, `issueSummary`, optional `postcode`.  
+**Legacy:** `to` instead of `phone`, `templateId` instead of `messageType` (both still supported).
+
+**`messageType` → sheet `templateId` mapping:**
+
+| messageType | templateId |
+|-------------|------------|
+| `emergency_confirmation` | SMS01 |
+| `callback_confirmation` | SMS02 |
+| `booking_link` | SMS03 |
+| `redirect_notice` | SMS04 |
+
+If **`messageText`** is set, it is used as the message body (with the same `{{name}}`, `{{issueSummary}}`, etc. placeholders). Otherwise the body is built from the **`SMS`** tab template for `templateId`. **`bookingLink`** in the request overrides the company default from the sheet when substituting `{{bookingLink}}`.
+
+**Required after normalisation:** `companyId`, `callId`, `to`, `templateId`.
+
+Preferred body example:
 
 ```json
 {
   "companyId": "rapidflow_london",
-  "to": "+447700900123",
-  "templateId": "SMS01",
   "callId": "call_123",
-  "name": "Jordan",
-  "issueSummary": "Burst pipe under sink",
-  "postcode": "N19 3AB"
+  "phone": "+447700900123",
+  "messageType": "emergency_confirmation",
+  "name": "Jordan Yussuf",
+  "bookingLink": "https://www.example.com/book",
+  "issueSummary": "Burst pipe with water near electrics"
 }
+```
+
+```bash
+curl -sS -X POST "$BASE/api/send-sms" \
+  -H "Content-Type: application/json" \
+  -H "x-elevenlabs-secret-plumbingpro: $SECRET" \
+  -d '{"companyId":"rapidflow_london","phone":"+447700900123","messageType":"emergency_confirmation","name":"Jordan","issueSummary":"Test"}'
 ```
 
 Template text may use placeholders: `{{name}}`, `{{issueSummary}}`, `{{issue}}`, `{{postcode}}`, `{{callId}}`, `{{companyName}}`, `{{bookingLink}}`.
@@ -206,18 +267,34 @@ Template text may use placeholders: `{{name}}`, `{{issueSummary}}`, `{{issue}}`,
 
 Notifies an on-call system via webhook and/or returns a transfer number. Returns `503` if neither `ESCALATION_WEBHOOK_URL` nor `ESCALATION_TRANSFER_NUMBER` is configured.
 
-Body example:
+**Preferred agent fields:** `companyId`, `callId` (optional — auto-generated if blank), `name`, `phone`, `postcode`, **`address`** (required), `issueSummary`, `priority`, `reason`.  
+**Legacy:** `callerPhone` instead of `phone`.
+
+**Required after normalisation:** `companyId`, `callId`, `name`, `callerPhone` (from `phone` or `callerPhone`), `issueSummary`, `priority`, `reason`, **`address`** (full street address for emergency escalation).
+
+The webhook payload includes **`postcode`** and **`address`** when set.
+
+Preferred body example:
 
 ```json
 {
   "companyId": "rapidflow_london",
   "callId": "call_123",
-  "reason": "Active flooding, caller requests human",
+  "name": "Jordan Yussuf",
+  "phone": "07476811532",
+  "postcode": "N19 3NB",
+  "address": "89 Hazelville Road, Islington",
+  "issueSummary": "Active flooding with sewage and electrics at risk",
   "priority": "P1",
-  "callerPhone": "+447700900123",
-  "issueSummary": "Water through ceiling",
-  "name": "Jordan"
+  "reason": "Flooding with sewage and vulnerable people present"
 }
+```
+
+```bash
+curl -sS -X POST "$BASE/api/escalate-human" \
+  -H "Content-Type: application/json" \
+  -H "x-elevenlabs-secret-plumbingpro: $SECRET" \
+  -d '{"companyId":"rapidflow_london","name":"Jordan","phone":"+447700900123","address":"1 Test St","issueSummary":"Leak","priority":"P1","reason":"Emergency"}'
 ```
 
 Response includes `webhookDelivered`, `webhookStatus` (when a webhook URL is set), `webhookResponsePreview` (first ~600 chars of the webhook response body when `webhookDelivered` is false — use this to debug 4xx/5xx from `ESCALATION_WEBHOOK_URL`), and `transferNumber`.
@@ -241,7 +318,12 @@ ESCALATION_WEBHOOK_URL=https://plumbing-tools-api.vercel.app/api/escalation-webh
 
 Appends a row into the `CallLogs` sheet.
 
-Body example:
+**Preferred agent fields:** `companyId`, `callId` (optional — auto-generated if blank), `intent`, `priority`, `emergencyFlag`, `name`, `phone`, `postcode`, `issueSummary`, `actionTaken`, `smsSent`, `escalatedTo`, `status`.  
+**Legacy:** `callerPhone` is accepted and mapped to `phone`.
+
+**Required after normalisation:** `companyId`, `callId`, `issueSummary`, `actionTaken`, `status`. Other fields have defaults where noted below.
+
+Preferred body example:
 
 ```json
 {
@@ -251,14 +333,21 @@ Body example:
   "priority": "P1",
   "emergencyFlag": "Yes",
   "name": "Jordan Yussuf",
-  "phone": "07400111222",
-  "postcode": "N19 3AB",
-  "issueSummary": "Burst pipe under sink with active flooding",
-  "actionTaken": "Urgent callback and dispatch",
+  "phone": "07476811532",
+  "postcode": "N19 3NB",
+  "issueSummary": "Burst pipe with water near electrics",
+  "actionTaken": "Urgent callback arranged",
   "smsSent": "SMS01",
-  "escalatedTo": "on_call_plumber",
-  "status": "open"
+  "escalatedTo": "On call engineer",
+  "status": "callback_pending"
 }
+```
+
+```bash
+curl -sS -X POST "$BASE/api/log-call" \
+  -H "Content-Type: application/json" \
+  -H "x-elevenlabs-secret-plumbingpro: $SECRET" \
+  -d '{"companyId":"rapidflow_london","issueSummary":"Test issue","actionTaken":"none","status":"closed"}'
 ```
 
 ## ElevenLabs tool mapping
@@ -290,6 +379,7 @@ Create these server tools:
 - Header: `x-elevenlabs-secret-plumbingpro: {{YOUR_SECRET}}`
 - Content type: JSON
 - Use: end of call logging
+- Body: prefer shared fields `companyId`, `phone`, `issueSummary`, `actionTaken`, `status` (see [POST /api/log-call](#post-apilog-call)); `callId` optional (auto-generated if omitted)
 
 ### 5. Intake flow
 - Method: `GET`
@@ -303,6 +393,7 @@ Create these server tools:
 - Header: `x-elevenlabs-secret-plumbingpro: {{YOUR_SECRET}}`
 - Content type: JSON
 - Use: send the approved template after triage
+- Body: prefer `phone`, `messageType` (or legacy `to` / `templateId`); see [POST /api/send-sms](#post-apisend-sms)
 
 ### 7. Escalate human
 - Method: `POST`
@@ -310,6 +401,7 @@ Create these server tools:
 - Header: `x-elevenlabs-secret-plumbingpro: {{YOUR_SECRET}}`
 - Content type: JSON
 - Use: webhook + optional transfer number for genuine emergencies
+- Body: prefer `phone`, **`address`** (required), `postcode`; see [POST /api/escalate-human](#post-apiescalate-human)
 
 ## Recommended prompt rule
 

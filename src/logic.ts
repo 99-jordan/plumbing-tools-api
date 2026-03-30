@@ -23,41 +23,57 @@ export const rulesApplicableSchema = z.object({
   vulnerablePerson: z.boolean().optional()
 });
 
-export const logCallSchema = z.object({
-  companyId: z.string().default('rapidflow_london'),
+/** Canonical shape after `normalizeLogCallInput` (agent: phone; legacy: callerPhone). */
+export const logCallCanonicalSchema = z.object({
+  companyId: z.string().min(1, 'Required'),
   callId: z.string().min(1),
   intent: z.string().default('plumbing_enquiry'),
   priority: z.string().default('P3'),
-  emergencyFlag: z.enum(['Yes', 'No']).default('No'),
-  name: z.string().min(1),
-  phone: z.string().min(1),
+  emergencyFlag: z.enum(['Yes', 'No']),
+  name: z.string().default(''),
+  phone: z.string().default(''),
   postcode: z.string().default(''),
-  issueSummary: z.string().min(2),
-  actionTaken: z.string().min(1),
+  issueSummary: z.string().min(1, 'Required'),
+  actionTaken: z.string().min(1, 'Required'),
   smsSent: z.string().default(''),
   escalatedTo: z.string().default(''),
-  status: z.string().default('open')
+  status: z.string().min(1, 'Required')
 });
 
-export const sendSmsSchema = z.object({
-  companyId: z.string().default('rapidflow_london'),
-  to: z.string().min(8),
-  templateId: z.string().min(1),
-  callId: z.string().optional().default(''),
-  name: z.string().optional().default(''),
-  issueSummary: z.string().optional().default(''),
-  postcode: z.string().optional().default('')
-});
+/** @deprecated use logCallCanonicalSchema — alias for transition */
+export const logCallSchema = logCallCanonicalSchema;
 
-export const escalateHumanSchema = z.object({
-  companyId: z.string().default('rapidflow_london'),
+/** Canonical shape after `normalizeSendSmsInput` (agent: phone + messageType; legacy: to + templateId). */
+export const sendSmsCanonicalSchema = z.object({
+  companyId: z.string().min(1),
   callId: z.string().min(1),
-  reason: z.string().min(1),
-  priority: z.string().default('P2'),
-  callerPhone: z.string().min(1),
-  issueSummary: z.string().optional().default(''),
-  name: z.string().optional().default('')
+  to: z.string().min(5, 'Required (phone or to)'),
+  templateId: z.string().min(1, 'Required (templateId or messageType)'),
+  name: z.string().default(''),
+  issueSummary: z.string().default(''),
+  postcode: z.string().default(''),
+  bookingLink: z.string().default(''),
+  messageText: z.string().default('')
 });
+
+/** @deprecated use sendSmsCanonicalSchema */
+export const sendSmsSchema = sendSmsCanonicalSchema;
+
+/** Canonical shape after `normalizeEscalateHumanInput` (agent: phone; legacy: callerPhone). */
+export const escalateHumanCanonicalSchema = z.object({
+  companyId: z.string().min(1, 'Required'),
+  callId: z.string().min(1),
+  name: z.string().min(1, 'Required'),
+  callerPhone: z.string().min(5, 'Required (phone or callerPhone)'),
+  postcode: z.string().optional(),
+  address: z.string().min(1, 'Required for emergency escalation'),
+  issueSummary: z.string().min(1, 'Required'),
+  priority: z.string().min(1),
+  reason: z.string().min(1, 'Required')
+});
+
+/** @deprecated use escalateHumanCanonicalSchema */
+export const escalateHumanSchema = escalateHumanCanonicalSchema;
 
 function intakeStepOrder(step: string | number): number {
   const n = Number(step);

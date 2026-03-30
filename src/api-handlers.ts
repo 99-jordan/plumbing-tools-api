@@ -8,11 +8,17 @@ import {
   buildIntakeFlow,
   buildRulesApplicable,
   buildServicesSearch,
-  escalateHumanSchema,
-  logCallSchema,
+  escalateHumanCanonicalSchema,
+  logCallCanonicalSchema,
   resolveSmsTemplate,
-  sendSmsSchema
+  sendSmsCanonicalSchema
 } from './logic.js';
+import {
+  normalizeEscalateHumanInput,
+  normalizeLogCallInput,
+  normalizeSendSmsInput
+} from './tool-payload-normalize.js';
+import { parseCanonical } from './tool-validation.js';
 
 export async function handleCompanyContext(companyId: string) {
   const data = await loadSheetData();
@@ -43,34 +49,46 @@ export async function handleSendSms(body: unknown) {
     throw err;
   }
 
-  const parsed = sendSmsSchema.parse(body);
+  const normalized = normalizeSendSmsInput(body);
+  const parsed = parseCanonical(sendSmsCanonicalSchema, normalized);
   const data = await loadSheetData();
   const company = buildCompanyContext(data, parsed.companyId);
-  const template = resolveSmsTemplate(data, parsed.companyId, parsed.templateId);
+
+  const bl = parsed.bookingLink ?? '';
+  const bookingLink = bl.trim() !== '' ? bl : company.bookingLink;
 
   const vars: Record<string, string> = {
-    name: parsed.name,
-    issueSummary: parsed.issueSummary,
-    issue: parsed.issueSummary,
-    postcode: parsed.postcode,
+    name: parsed.name ?? '',
+    issueSummary: parsed.issueSummary ?? '',
+    issue: parsed.issueSummary ?? '',
+    postcode: parsed.postcode ?? '',
     callId: parsed.callId,
     companyName: company.companyName,
-    bookingLink: company.bookingLink
+    bookingLink
   };
 
-  const bodyText = renderSmsTemplate(template.template_text, vars);
+  const customText = parsed.messageText ?? '';
+  let bodyText: string;
+  if (customText.trim() !== '') {
+    bodyText = renderSmsTemplate(customText, vars);
+  } else {
+    const template = resolveSmsTemplate(data, parsed.companyId, parsed.templateId);
+    bodyText = renderSmsTemplate(template.template_text, vars);
+  }
+
   const { messageSid } = await sendSmsViaTwilio(parsed.to, bodyText);
 
   return {
     ok: true,
-    templateId: template.template_id,
+    templateId: parsed.templateId,
     messageSid,
     bodyLength: bodyText.length
   };
 }
 
 export async function handleEscalateHuman(body: unknown) {
-  const parsed = escalateHumanSchema.parse(body);
+  const normalized = normalizeEscalateHumanInput(body);
+  const parsed = parseCanonical(escalateHumanCanonicalSchema, normalized);
   const data = await loadSheetData();
   assertCompanyExists(data, parsed.companyId);
 
@@ -99,7 +117,9 @@ export async function handleEscalateHuman(body: unknown) {
       callerPhone: parsed.callerPhone,
       issueSummary: parsed.issueSummary,
       name: parsed.name,
-      timestamp
+      timestamp,
+      postcode: parsed.postcode,
+      address: parsed.address
     });
     webhookDelivered = result.ok;
     webhookStatus = result.status;
@@ -116,21 +136,22 @@ export async function handleEscalateHuman(body: unknown) {
 }
 
 export async function handleLogCall(body: unknown) {
-  const parsed = logCallSchema.parse(body);
-  const row = [
+  const normalized = normalizeLogCallInput(body);
+  const parsed = parseCanonical(logCallCanonicalSchema, normalized);
+  const row: string[] = [
     new Date().toISOString(),
     parsed.companyId,
     parsed.callId,
-    parsed.intent,
-    parsed.priority,
+    parsed.intent ?? 'plumbing_enquiry',
+    parsed.priority ?? 'P3',
     parsed.emergencyFlag,
-    parsed.name,
-    parsed.phone,
-    parsed.postcode,
+    parsed.name ?? '',
+    parsed.phone ?? '',
+    parsed.postcode ?? '',
     parsed.issueSummary,
     parsed.actionTaken,
-    parsed.smsSent,
-    parsed.escalatedTo,
+    parsed.smsSent ?? '',
+    parsed.escalatedTo ?? '',
     parsed.status
   ];
 

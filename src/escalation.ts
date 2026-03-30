@@ -9,6 +9,8 @@ export type EscalationPayload = {
   issueSummary: string;
   name: string;
   timestamp: string;
+  postcode?: string;
+  address?: string;
 };
 
 export async function postEscalationWebhook(payload: EscalationPayload): Promise<{

@@ -11,6 +11,7 @@ import {
   handleSendSms,
   handleServicesSearch
 } from './api-handlers.js';
+import { HttpValidationError } from './http-validation-error.js';
 
 const app = express();
 app.use(cors());
@@ -79,6 +80,10 @@ app.post('/api/send-sms', async (req, res) => {
   try {
     res.json(await handleSendSms(req.body));
   } catch (error) {
+    if (error instanceof HttpValidationError) {
+      res.status(400).json({ error: 'Validation failed', fields: error.fields });
+      return;
+    }
     const message = error instanceof Error ? error.message : 'Unknown error';
     const statusCode = (error as Error & { statusCode?: number }).statusCode;
     if (statusCode === 503) {
@@ -97,6 +102,10 @@ app.post('/api/escalate-human', async (req, res) => {
   try {
     res.json(await handleEscalateHuman(req.body));
   } catch (error) {
+    if (error instanceof HttpValidationError) {
+      res.status(400).json({ error: 'Validation failed', fields: error.fields });
+      return;
+    }
     const message = error instanceof Error ? error.message : 'Unknown error';
     const statusCode = (error as Error & { statusCode?: number }).statusCode;
     if (statusCode === 503) {
@@ -111,6 +120,10 @@ app.post('/api/log-call', async (req, res) => {
   try {
     res.json(await handleLogCall(req.body));
   } catch (error) {
+    if (error instanceof HttpValidationError) {
+      res.status(400).json({ error: 'Validation failed', fields: error.fields });
+      return;
+    }
     res.status(400).json({ error: error instanceof Error ? error.message : 'Unknown error' });
   }
 });
